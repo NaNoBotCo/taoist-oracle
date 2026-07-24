@@ -1,8 +1,9 @@
 # Taoist Oracle
 
-One engine for the Chinese/Taoist **cast-oracle** divination methods, built so
-the deterministic-birth (Bazi, Zi Wei) and spatial (feng shui) layers can drop
-in later without touching the core.
+One engine for the Chinese/Taoist divination methods — the **cast oracles** (I
+Ching, Plum Blossom, Wen Wang Gua) and the first **deterministic birth chart**
+(Bazi / Four Pillars) — with the remaining layers (Zi Wei, feng shui, the Three
+Styles) designed to drop in without touching the core.
 
 Pure Python standard library. Offline forever. No dependencies.
 
@@ -39,6 +40,12 @@ A numbered menu offers:
 5. **Wen Wang Gua 文王卦 / Liu Yao 六爻** — a coin hexagram with its full overlay:
    najia branches (纳甲), five-element relatives (六親), world/response lines
    (世/應), the day's six beasts (六獸), and the void branches (旬空).
+6. **Bazi 八字 / Four Pillars** — a birth moment → four solar-term-bounded Ganzhi
+   pillars, the Day Master (日主), hidden stems (藏干), the Ten Gods (十神), nayin
+   (納音), the five-element tally, and the 大運 luck pillars. All exact rule-based
+   computation; the day-master strength read is a *labelled heuristic*, not a
+   verdict (real 用神 assessment is an interpretive craft). Methods in
+   `methods/bazi.py`.
 
 ## Architecture
 

@@ -157,6 +157,32 @@
   .jw{font-size:.9rem; color:var(--muted)}
   .jq{font-style:italic; margin:.15rem 0}
   .jh{font-size:1.05rem}
+  /* --- bazi --- */
+  .bzform{display:flex; gap:.6rem; flex-wrap:wrap; align-items:end; margin:.6rem 0}
+  .bzform label{display:flex; flex-direction:column; font-size:.85rem; color:var(--muted); gap:.2rem}
+  .bzform input,.bzform select{font:inherit; font-size:1.15rem; padding:.4rem .5rem;
+    border:2px solid var(--line); border-radius:9px; background:var(--panel); color:var(--ink)}
+  .bzform input{width:5rem}
+  .pillars4{display:grid; grid-template-columns:repeat(4,1fr); gap:.7rem; margin:1rem 0}
+  @media(max-width:620px){.pillars4{grid-template-columns:1fr 1fr}}
+  .pcol{border:1px solid var(--line); border-radius:12px; padding:.7rem .7rem; text-align:center}
+  .pcol.dayp{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 6%, transparent)}
+  .pcol .plab{font-size:.82rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .pcol .pgz{font-size:2rem; margin:.15rem 0}
+  .pcol .pan{font-size:.9rem; color:var(--muted)}
+  .pcol .pgod{margin-top:.35rem; font-size:.98rem}
+  .pcol .phid{margin-top:.45rem; font-size:.82rem; color:var(--muted); line-height:1.55}
+  .pcol .pny{margin-top:.45rem; font-size:.8rem; color:var(--muted)}
+  .elrow{display:flex; flex-direction:column; gap:.35rem; margin:.8rem 0; max-width:440px}
+  .elbar{display:flex; align-items:center; gap:.6rem}
+  .elbar .eln{width:5.5rem; font-size:1rem}
+  .elbar .elt{height:.85rem; background:var(--accent2); border-radius:5px; min-width:2px}
+  .elbar .elz{font-size:.85rem; color:var(--muted)}
+  .elbar.absent .eln{opacity:.6}
+  .luckrow{display:flex; gap:.5rem; flex-wrap:wrap; margin:.6rem 0}
+  .luckp{border:1px solid var(--line); border-radius:9px; padding:.4rem .6rem; text-align:center; font-size:.9rem}
+  .luckp b{display:block; font-size:1.15rem}
+  .luckp span{color:var(--muted); font-size:.78rem}
   .tests{font-size:.8rem;color:var(--muted);margin-top:2rem}
 </style>
 </head>
@@ -324,6 +350,7 @@ const STEM_PY=["Jiǎ","Yǐ","Bǐng","Dīng","Wù","Jǐ","Gēng","Xīn","Rén","G
 const BRANCHES=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
 const BRANCH_PY=["Zǐ","Chǒu","Yín","Mǎo","Chén","Sì","Wǔ","Wèi","Shēn","Yǒu","Xū","Hài"];
 const BRANCH_EL=[WATER,EARTH,WOOD,WOOD,EARTH,FIRE,FIRE,EARTH,METAL,METAL,EARTH,WATER];
+const BRANCH_ANIMAL=["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
 
 function gregorianToJD(y,m,d,hour){ // JD at given UT hour (default midnight)
   hour=hour||0;
@@ -528,6 +555,122 @@ function castLiuyao(y,m,d,h){
   return base;
 }
 
+// ---- Method: Bazi 八字 / Four Pillars ----------------------------
+// year (立春-bounded), month (solar-term) and hour pillars, ported from ganzhi.py
+const STEM_ELEMENT=[0,0,1,1,2,2,3,3,4,4];   // stem//2 -> WOOD..WATER
+function yearPillarIdx(y,m,d){
+  const lichun=solarTermJD(315,gregorianToJD(y,2,1))+CST;
+  const g=jdToGregorian(lichun);
+  let yy=y;
+  if(midnightJD(y,m,d)<midnightJD(g[0],g[1],Math.floor(g[2]))) yy-=1;
+  return ((yy-4)%60+60)%60;
+}
+function monthPillarIdx(y,m,d,h){
+  const lon=solarLongitude(gregorianToJD(y,m,d,h));
+  const branch=(Math.floor(((((lon-315)%360)+360)%360)/30)+2)%12;
+  const yp=pillar(yearPillarIdx(y,m,d));
+  const order=(((branch-2)%12)+12)%12;
+  const stem=((yp.stem%5)*2+2+order)%10;
+  return combine(stem,branch);
+}
+function hourPillarIdx(dayStem,hour){
+  const branch=hourBranchOf(hour);
+  return combine(((dayStem%5)*2+branch)%10, branch);
+}
+function fourPillars(y,m,d,h){
+  const dp=pillar(dayIndex(y,m,d));
+  return {year:pillar(yearPillarIdx(y,m,d)), month:pillar(monthPillarIdx(y,m,d,h)),
+          day:dp, hour:pillar(hourPillarIdx(dp.stem,h))};
+}
+const HIDDEN_STEMS={0:[9],1:[5,9,7],2:[0,2,4],3:[1],4:[4,1,9],5:[2,6,4],
+  6:[3,5],7:[5,3,1],8:[6,8,4],9:[7],10:[4,7,3],11:[8,0]};
+const TEN_GODS={"same,true":["比肩","Peer"],"same,false":["劫財","Rob Wealth"],
+  "i_generate,true":["食神","Eating God"],"i_generate,false":["傷官","Hurting Officer"],
+  "i_overcome,true":["偏財","Indirect Wealth"],"i_overcome,false":["正財","Direct Wealth"],
+  "overcomes_me,true":["七殺","Seven Killings"],"overcomes_me,false":["正官","Direct Officer"],
+  "generates_me,true":["偏印","Indirect Resource"],"generates_me,false":["正印","Direct Resource"]};
+function tenGod(dm,other){
+  const rel=relation(STEM_ELEMENT[dm],STEM_ELEMENT[other]);
+  return TEN_GODS[rel+","+((dm%2)===(other%2))];
+}
+const NAYIN=[["海中金","Metal in the Sea"],["爐中火","Fire in the Furnace"],
+  ["大林木","Wood of the Great Forest"],["路旁土","Earth by the Roadside"],
+  ["劍鋒金","Metal of the Sword's Edge"],["山頭火","Fire on the Mountain Peak"],
+  ["澗下水","Water in the Ravine"],["城頭土","Earth of the City Wall"],
+  ["白鑞金","White Wax Metal"],["楊柳木","Willow Wood"],
+  ["泉中水","Water of the Spring"],["屋上土","Earth on the Rooftop"],
+  ["霹靂火","Thunderbolt Fire"],["松柏木","Pine and Cypress Wood"],
+  ["長流水","Long-Flowing Water"],["沙中金","Metal in the Sand"],
+  ["山下火","Fire at the Foot of the Hill"],["平地木","Wood of the Level Ground"],
+  ["壁上土","Earth on the Wall"],["金箔金","Gold-Foil Metal"],
+  ["覆燈火","Sheltered Lamp Fire"],["天河水","Water of the Milky Way"],
+  ["大驛土","Earth of the Great Post-Road"],["釵釧金","Metal of Hairpin and Bracelet"],
+  ["桑柘木","Mulberry Wood"],["大溪水","Water of the Great Stream"],
+  ["沙中土","Earth in the Sand"],["天上火","Fire in the Heavens"],
+  ["石榴木","Pomegranate Wood"],["大海水","Water of the Great Ocean"]];
+function nayinOf(idx){return NAYIN[Math.floor((((idx%60)+60)%60)/2)];}
+function baziPillarView(p,dm,isDay){
+  const hidden=HIDDEN_STEMS[p.branch];
+  return {stem:p.stem, branch:p.branch, stemZh:STEMS[p.stem], branchZh:BRANCHES[p.branch][0],
+    nameZh:p.zh(), animal:BRANCH_ANIMAL[p.branch], stemElement:STEM_ELEMENT[p.stem],
+    branchElement:BRANCH_EL[p.branch], stemGod:isDay?null:tenGod(dm,p.stem),
+    hidden:hidden.map(s=>({stem:s,zh:STEMS[s],element:STEM_ELEMENT[s],god:tenGod(dm,s)})),
+    nayin:nayinOf(p.index)};
+}
+function baziElements(pl){
+  const t=[0,0,0,0,0];
+  for(const k of ["year","month","day","hour"]){
+    t[STEM_ELEMENT[pl[k].stem]]++; t[STEM_ELEMENT[HIDDEN_STEMS[pl[k].branch][0]]]++;
+  }
+  return t;
+}
+function baziStrength(pl){
+  const dm=pl.day.stem, dmEl=STEM_ELEMENT[dm]; let support=0,drain=0;
+  for(const k of ["year","month","day","hour"]){
+    for(const s of [pl[k].stem, HIDDEN_STEMS[pl[k].branch][0]]){
+      const rel=relation(dmEl,STEM_ELEMENT[s]);
+      if(rel==="same"||rel==="generates_me") support++; else drain++;
+    }
+  }
+  const monthRel=relation(dmEl, STEM_ELEMENT[HIDDEN_STEMS[pl.month.branch][0]]);
+  const seasoned=(monthRel==="same"||monthRel==="generates_me");
+  let label = (support>drain&&seasoned)?"leans strong"
+            : (drain>support&&!seasoned)?"leans weak":"mixed / balanced";
+  return {support,drain,monthSupports:seasoned,label};
+}
+function jieJD(jd,forward){
+  const lon=solarLongitude(jd);
+  const k=forward?Math.floor((lon-15)/30)+1:Math.ceil((lon-15)/30)-1;
+  const target=((15+30*k)%360+360)%360;
+  const diff=(((target-lon)%360)+540)%360-180;
+  return solarTermJD(target, jd+diff/0.98565);
+}
+function luckPillars(y,m,d,h,gender,count){
+  count=count||8;
+  if(gender!=="male"&&gender!=="female") return null;
+  const yp=pillar(yearPillarIdx(y,m,d));
+  const yearYang=(yp.stem%2===0);
+  const forward=(yearYang&&gender==="male")||(!yearYang&&gender==="female");
+  const birth=gregorianToJD(y,m,d,h);
+  const days=Math.abs(jieJD(birth,forward)-birth);
+  const startY=Math.floor(days/3);
+  let startM=Math.round((days/3-startY)*12); let sy=startY;
+  if(startM===12){sy++;startM=0;}
+  const mi=monthPillarIdx(y,m,d,h), step=forward?1:-1, out=[];
+  for(let i=0;i<count;i++){
+    const p=pillar(((mi+step*(i+1))%60+60)%60);
+    out.push({nameZh:p.zh(),animal:BRANCH_ANIMAL[p.branch],stemElement:STEM_ELEMENT[p.stem],startAge:sy+10*i});
+  }
+  return {forward,startAgeYears:sy,startAgeMonths:startM,pillars:out};
+}
+function baziChart(y,m,d,h,gender){
+  const pl=fourPillars(y,m,d,h), dm=pl.day.stem, order=["year","month","day","hour"];
+  const views={}; for(const k of order) views[k]=baziPillarView(pl[k],dm,k==="day");
+  return {input:{year:y,month:m,day:d,hour:h,gender:gender||null}, order, pillars:views,
+    dayMaster:{stem:dm,zh:STEMS[dm],element:STEM_ELEMENT[dm],polarity:dm%2===0?"yang":"yin"},
+    elements:baziElements(pl), strength:baziStrength(pl), luck:luckPillars(y,m,d,h,gender)};
+}
+
 /* ============================================================
    UI
    ============================================================ */
@@ -662,7 +805,7 @@ function renderJournal(){
     const ch=e.changed?(' → #'+e.changed+' '+esc(e.cname)):'';
     h+='<div class="jrow"><div class="jw">'+when+' · '+esc(e.method)+'</div>'
       +(e.q?'<div class="jq">“'+esc(e.q)+'”</div>':'')
-      +'<div class="jh">#'+e.primary+' '+esc(e.pname)+ch+mv+(e.extra?(' · '+esc(e.extra)):'')+'</div></div>';
+      +'<div class="jh">'+(e.primary?('#'+e.primary+' '):'')+esc(e.pname)+ch+mv+(e.extra?(' · '+esc(e.extra)):'')+'</div></div>';
   }
   h+='</div>';
   body.innerHTML=h;
@@ -739,6 +882,73 @@ function renderLiuyao(r,when,q){
   return html;
 }
 
+function renderBazi(c){
+  const i=c.input, dm=c.dayMaster;
+  const glab={year:"Year 年",month:"Month 月",day:"Day 日",hour:"Hour 時"};
+  let cols="";
+  for(const k of c.order){
+    const p=c.pillars[k];
+    const god=p.stemGod?(p.stemGod[0]+" "+p.stemGod[1]):"日主 self";
+    const hid=p.hidden.map(function(h){return h.zh+" "+h.god[0];}).join(" · ");
+    cols+='<div class="pcol'+(k==="day"?" dayp":"")+'">'
+      +'<div class=plab>'+glab[k]+'</div><div class=pgz>'+p.nameZh+'</div>'
+      +'<div class=pan>'+p.animal+'</div><div class=pgod>'+esc(god)+'</div>'
+      +'<div class=phid>藏干 '+esc(hid)+'</div>'
+      +'<div class=pny>納音 '+p.nayin[0]+'<br>'+p.nayin[1]+'</div></div>';
+  }
+  let maxc=1; for(let e=0;e<5;e++) if(c.elements[e]>maxc) maxc=c.elements[e];
+  let els="";
+  for(let e=0;e<5;e++){const n=c.elements[e];
+    els+='<div class="elbar'+(n===0?" absent":"")+'"><span class=eln>'+elName(e)+'</span>'
+      +'<span class=elt style="width:'+(n/maxc*220)+'px"></span>'
+      +'<span class=elz>'+n+(n===0?" · absent":"")+'</span></div>';}
+  const s=c.strength;
+  let luck;
+  if(c.luck){
+    luck='<h3 class="sec">Luck pillars 大運 — '+(c.luck.forward?"forward 順":"backward 逆")
+      +', from age '+c.luck.startAgeYears+'y '+c.luck.startAgeMonths+'m</h3><div class=luckrow>'
+      +c.luck.pillars.map(function(p){return '<div class=luckp><b>'+p.nameZh+'</b>'+p.animal
+        +'<span>age '+p.startAge+'</span></div>';}).join("")+'</div>';
+  } else {
+    luck='<p class=hint>Add a birth sex to compute the 大運 luck pillars — the traditional rule keys their direction off it. The chart above needs no such input.</p>';
+  }
+  const pad=function(n){return String(n).padStart(2,"0");};
+  return '<div class="card"><h2>八字 Bazi — Four Pillars of Destiny</h2>'
+    +'<div class=meta>'+i.year+'-'+pad(i.month)+'-'+pad(i.day)+' '+pad(i.hour)+':00'+(i.gender?" · "+i.gender:"")+'</div>'
+    +'<div class=facts><b>Day Master 日主:</b> '+dm.zh+' — '+elName(dm.element)+', '+dm.polarity+'</div>'
+    +'<div class=pillars4>'+cols+'</div>'
+    +'<h3 class="sec">Five Elements — the eight characters</h3><div class=elrow>'+els+'</div>'
+    +'<div class=protocol><b>Day-Master balance</b> (a heuristic, not a verdict): <b>'+s.label+'</b> — '
+      +'supporters '+s.support+' vs drainers '+s.drain+'; the birth month '
+      +(s.monthSupports?"supports":"does not support")+' the Day Master.</div>'
+    +luck
+    +'<div class=transl-note>The pillars, hidden stems, Ten Gods, nayin and luck cycles are exact rule-based computation. The strength read is a labelled heuristic — real 用神 assessment is an interpretive craft, not a fortune.</div></div>';
+}
+function baziForm(){
+  $("#controls").innerHTML='<div class="bzform">'
+    +'<label>Year<input id=bzY type=number value="1990"></label>'
+    +'<label>Month<input id=bzM type=number value="6" min=1 max=12></label>'
+    +'<label>Day<input id=bzD type=number value="15" min=1 max=31></label>'
+    +'<label>Hour<input id=bzH type=number value="9" min=0 max=23></label>'
+    +'<label>Birth sex (for luck)<select id=bzG><option value="">— skip —</option>'
+    +'<option value="male">male</option><option value="female">female</option></select></label>'
+    +'<button class="go" id=bzGo>Cast the chart</button></div>';
+  $("#bzGo").onclick=function(){
+    const y=+$("#bzY").value||2000,m=+$("#bzM").value||1,d=+$("#bzD").value||1,h=+$("#bzH").value||0;
+    const g=$("#bzG").value||null;
+    const c=baziChart(y,m,d,h,g);
+    show(renderBazi(c));
+    logNote("Bazi 八字", y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0")
+      +" · Day Master "+c.dayMaster.zh+" "+elName(c.dayMaster.element));
+  };
+}
+function logNote(method,summary){
+  const e={t:new Date().toISOString(),method:method,q:"",primary:null,pname:summary,
+    moving:[],changed:null,cname:"",extra:""};
+  const log=loadLog(); log.unshift(e);
+  localStorage.setItem("oracle.log",JSON.stringify(log.slice(0,200))); renderJournal();
+}
+
 // menu wiring
 const METHODS=[
   ["易經","I Ching — three coins","quick cast, even odds",function(){const q=getQ();const r=castYijing("coin");show(renderYijing(r,q));logReading("I Ching · coins",q,r);}],
@@ -751,6 +961,7 @@ const METHODS=[
   ["梅花","Plum Blossom — two numbers","you give two numbers",function(){numberForm();}],
   ["梅花","Plum Blossom — this moment","from the current lunar date",function(){const q=getQ();const n=new Date();const r=meihuaFromTime(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours());show(renderMeihua(r,q));logReading("Plum Blossom · moment",q,r);}],
   ["文王","Wen Wang Gua (Liu Yao)","full six-line overlay for now",function(){const q=getQ();const n=new Date();const r=castLiuyao(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours());show(renderLiuyao(r,n.toLocaleString(),q));logReading("Wen Wang Gua",q,r,"day "+r.overlay.dayPillar.zh());}],
+  ["八字","Bazi — Four Pillars chart","a birth moment, the deterministic chart",function(){baziForm();}],
 ];
 function buildMenu(){
   $("#menu").innerHTML=METHODS.map(function(m,i){

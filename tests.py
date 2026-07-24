@@ -4,7 +4,7 @@ import random
 from core import bagua, ganzhi, wuxing
 from core import calendar_cn as cal
 from data import hexagrams
-from methods import yijing, meihua, liuyao
+from methods import yijing, meihua, liuyao, bazi
 
 PASS = 0
 FAIL = 0
@@ -84,6 +84,37 @@ check("meihua time has lunar", mt["lunar"]["month"] == 1)
 lo = liuyao.cast(2024, 2, 10, 14, random.Random(7))
 check("liuyao overlay 6 lines", len(lo["overlay"]["lines"]) == 6)
 check("liuyao world in 1..6", 1 <= lo["overlay"]["world"] <= 6)
+
+# --- bazi (Four Pillars) ---------------------------------------------------
+# Ten Gods relative to Day Master 甲 (Jia, index 0)
+check("十神 甲→庚 = 七殺", bazi.ten_god(0, 6)[0] == "七殺")
+check("十神 甲→辛 = 正官", bazi.ten_god(0, 7)[0] == "正官")
+check("十神 甲→丙 = 食神", bazi.ten_god(0, 2)[0] == "食神")
+check("十神 甲→壬 = 偏印", bazi.ten_god(0, 8)[0] == "偏印")
+check("十神 甲→乙 = 劫財", bazi.ten_god(0, 1)[0] == "劫財")
+check("十神 甲→甲 = 比肩", bazi.ten_god(0, 0)[0] == "比肩")
+# nayin: 甲子 (index 0) = 海中金
+check("納音 甲子 = 海中金", bazi.nayin(0)[0] == "海中金")
+check("納音 乙丑 = 海中金", bazi.nayin(1)[0] == "海中金")
+check("納音 丙寅 = 爐中火", bazi.nayin(2)[0] == "爐中火")
+check("納音 壬戌 = 大海水", bazi.nayin(58)[0] == "大海水")
+# hidden stems: 寅 -> 甲丙戊
+check("藏干 寅 = 甲丙戊", bazi.HIDDEN_STEMS[2] == [0, 2, 4])
+check("藏干 子 = 癸", bazi.HIDDEN_STEMS[0] == [9])
+# a chart for 2000-02-10 14:00 (male)
+_ch = bazi.chart(2000, 2, 10, 14, "male")
+check("chart has 4 pillars", len(_ch["pillars"]) == 4)
+check("day master is a valid stem", 0 <= _ch["day_master"]["stem"] <= 9)
+check("day pillar has no ten god", _ch["pillars"]["day"]["stem_god"] is None)
+check("year pillar HAS a ten god", _ch["pillars"]["year"]["stem_god"] is not None)
+check("element tally sums to 8", sum(_ch["elements"].values()) == 8)
+check("luck pillars present for male", _ch["luck"] is not None and len(_ch["luck"]["pillars"]) == 8)
+check("no luck without gender", bazi.chart(2000, 2, 10, 14)["luck"] is None)
+# luck direction: yang year + male -> forward; yin year + male -> backward
+_yang_year = bazi.chart(1984, 6, 1, 12, "male")  # 甲子 year (yang) -> forward
+check("yang-year male = forward", _yang_year["luck"]["forward"] is True)
+_yin_year = bazi.chart(1985, 6, 1, 12, "male")   # 乙丑 year (yin) -> backward
+check("yin-year male = backward", _yin_year["luck"]["forward"] is False)
 
 print(f"\n{PASS} passed, {FAIL} failed")
 raise SystemExit(1 if FAIL else 0)

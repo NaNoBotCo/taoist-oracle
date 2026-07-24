@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 
 from core import bagua, wuxing, ganzhi
-from methods import yijing, meihua, liuyao
+from methods import yijing, meihua, liuyao, bazi
 
 LINE = "─" * 60
 
@@ -200,6 +200,60 @@ def act_liuyao():
     show_liuyao(reading, now.strftime("%Y-%m-%d %H:%M"))
 
 
+def show_bazi(chart):
+    print(LINE)
+    print("BAZI 八字 — Four Pillars of Destiny\n")
+    inp = chart["input"]
+    line = f"   Birth: {inp['year']}-{inp['month']:02d}-{inp['day']:02d} {inp['hour']:02d}:00"
+    if inp["gender"]:
+        line += f"   ({inp['gender']})"
+    print(line)
+    dm = chart["day_master"]
+    print(f"   Day Master 日主: {dm['zh']} — {use_el_name(dm['element'])}, {dm['polarity']}\n")
+
+    labels = {"year": "Year 年", "month": "Month 月", "day": "Day 日", "hour": "Hour 時"}
+    for k in chart["order"]:
+        p = chart["pillars"][k]
+        god = (p["stem_god"][0] + " " + p["stem_god"][1]) if p["stem_god"] else "日主 (self)"
+        hid = "   ".join(h["zh"] + " " + h["god"][0] for h in p["hidden"])
+        print(f"   {labels[k]:8} {p['name_zh']}  {p['animal']}")
+        print(f"        stem {p['stem_zh']} ({use_el_name(p['stem_element'])}) — {god}")
+        print(f"        hidden 藏干: {hid}")
+        print(f"        nayin 納音: {p['nayin'][0]} {p['nayin'][1]}")
+    print("\n   Five Elements across the eight characters:")
+    els = chart["elements"]
+    for e in range(5):
+        bar = "●" * els[e]
+        tail = "   — absent" if els[e] == 0 else ""
+        print(f"     {use_el_name(e):9} {els[e]}  {bar}{tail}")
+    s = chart["strength"]
+    print(f"\n   Day-Master balance — a heuristic, not a verdict: {s['label']}")
+    print(f"     supporters {s['support']} vs drainers {s['drain']} · "
+          f"birth month supports the Day Master: {'yes' if s['month_supports'] else 'no'}")
+    L = chart["luck"]
+    if L:
+        dirn = "forward 順" if L["forward"] else "backward 逆"
+        print(f"\n   Luck pillars 大運 ({dirn}), beginning age "
+              f"{L['start_age_years']}y {L['start_age_months']}m:")
+        for p in L["pillars"]:
+            print(f"     from age {p['start_age']:>2}:  {p['name_zh']}  {p['animal']}")
+    else:
+        print("\n   Give a birth sex to add the 大運 luck pillars — the traditional rule")
+        print("   keys their direction off it. The chart above needs no such input.")
+    print(LINE)
+
+
+def act_bazi():
+    print("\n   A birth moment, in the solar (Western) calendar.")
+    y = ask_int("   Year (e.g. 1990): ")
+    m = ask_int("   Month (1-12): ")
+    d = ask_int("   Day (1-31): ")
+    h = ask_int("   Hour (0-23): ")
+    g = input("   Birth sex for the luck pillars — [m]ale / [f]emale / [s]kip: ").strip().lower()
+    gender = "male" if g.startswith("m") else "female" if g.startswith("f") else None
+    show_bazi(bazi.chart(y, m, d, h, gender))
+
+
 def show_odds():
     print(LINE)
     print("THE ODDS — three coins vs. yarrow stalks\n")
@@ -227,6 +281,7 @@ MENU = [
     ("Plum Blossom — from two numbers", act_meihua_numbers),
     ("Plum Blossom — from this moment", act_meihua_time),
     ("Wen Wang Gua (Liu Yao) — cast for now", act_liuyao),
+    ("Bazi 八字 — Four Pillars birth chart", act_bazi),
     ("The odds — coins vs. yarrow (statistics)", show_odds),
 ]
 
