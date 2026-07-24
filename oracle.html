@@ -96,6 +96,33 @@
   table.odds tr.move td{color:var(--accent)}
   .odds p{font-size:1.05rem; margin:.5rem 0}
   .odds b{color:var(--muted)}
+  /* --- yarrow ritual animation --- */
+  .animtoggle{display:inline-flex; align-items:center; gap:.5rem; color:var(--muted);
+    font-size:1rem; margin:-.5rem 0 1.2rem; cursor:pointer}
+  .animtoggle input{width:1.1rem; height:1.1rem; accent-color:var(--accent)}
+  .stage{background:var(--panel); border:2px solid var(--line); border-radius:16px;
+    padding:1.3rem 1.4rem; box-shadow:var(--shadow); margin-bottom:1.1rem}
+  .stagehead{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:1rem}
+  .stagehead .cap{color:var(--muted); font-size:1.05rem}
+  .stagehead .skip{color:var(--muted); font-size:.9rem; cursor:pointer; border-bottom:1px dotted var(--muted)}
+  .mat{display:flex; justify-content:center; align-items:flex-end; gap:2px; min-height:46px}
+  .stalk{width:4px; height:38px; border-radius:2px; flex:0 0 auto;
+    background:linear-gradient(180deg,#c9a24b,#8a6c2a);
+    transition:opacity .5s ease, width .5s ease, margin .4s ease, filter .4s ease}
+  .stalk.in{opacity:0}
+  .stalk.pivot{margin-left:26px}
+  .stalk.gone{opacity:0; width:0}
+  .stalk.glow{filter:brightness(1.25) drop-shadow(0 0 4px rgba(201,162,75,.75))}
+  .counts{color:var(--muted); font-size:1.05rem; margin-top:.9rem; min-height:1.5rem; text-align:center}
+  .buildhex{margin-top:1.2rem; display:flex; flex-direction:column; gap:.42rem; align-items:center}
+  .brow{display:flex; gap:.7rem; width:220px; height:20px; align-items:center}
+  .brow .bar{height:100%; flex:1; border-radius:4px; background:var(--yang)}
+  .brow .yin{display:flex; gap:14%; flex:1; height:100%}
+  .brow.ph{opacity:.16}
+  .brow.ph::before{content:""; flex:1; height:100%; border:1.5px dashed var(--muted); border-radius:4px}
+  .brow.move .bar{background:var(--accent)}
+  @media (prefers-color-scheme:dark){.stalk{background:linear-gradient(180deg,#d8b45c,#7d611f)}}
+  @media (prefers-reduced-motion:reduce){.stalk{transition:none}}
   .tests{font-size:.8rem;color:var(--muted);margin-top:2rem}
 </style>
 </head>
@@ -105,6 +132,8 @@
   <p class="sub">Cast-oracle methods on one engine — I Ching, Plum Blossom, Wen Wang Gua.</p>
 
   <div class="methods" id="menu"></div>
+
+  <label class="animtoggle"><input type="checkbox" id="anim" checked> Animate the yarrow ritual (the 49-stalk casting)</label>
 
   <details class="odds" id="odds">
     <summary>ⓘ About the odds — three coins vs. yarrow stalks</summary>
@@ -532,7 +561,12 @@ function renderLiuyao(r,when){
 // menu wiring
 const METHODS=[
   ["易經","I Ching — three coins","quick cast, even odds",function(){show(renderYijing(castYijing("coin")));}],
-  ["易經","I Ching — yarrow stalks","the 49-stalk rite, classic bias",function(){show(renderYijing(castYijing("yarrow")));}],
+  ["易經","I Ching — yarrow stalks","the 49-stalk rite, watch it unfold",function(){
+    const reading=castYijing("yarrow");
+    const on=$("#anim")&&$("#anim").checked;
+    const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(on&&!reduce) animateYarrow(reading); else show(renderYijing(reading));
+  }],
   ["梅花","Plum Blossom — two numbers","you give two numbers",function(){numberForm();}],
   ["梅花","Plum Blossom — this moment","from the current lunar date",function(){const n=new Date();show(renderMeihua(meihuaFromTime(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours())));}],
   ["文王","Wen Wang Gua (Liu Yao)","full six-line overlay for now",function(){const n=new Date();show(renderLiuyao(castLiuyao(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours()),n.toLocaleString()));}],
@@ -551,6 +585,95 @@ function numberForm(){
 }
 function show(html){$("#out").innerHTML=html; $("#out").scrollIntoView({behavior:"smooth",block:"start"});}
 buildMenu();
+
+/* ---- the yarrow ritual animation ----
+   The line value is already fixed (drawn from the exact distribution). Here we
+   choreograph the traditional Three Changes to land on it, using authentic
+   stalk counts: change 1 sets aside 5 or 9, changes 2 & 3 set aside 4 or 8, and
+   49 minus what is set aside, divided by 4, is the line (6/7/8/9). */
+const LINE_TYPE={6:["老陰","old yin"],7:["少陽","young yang"],8:["少陰","young yin"],9:["老陽","old yang"]};
+function stalkDecompose(v){
+  const opts=[];
+  for(const c1 of [5,9])for(const c2 of [4,8])for(const c3 of [4,8])
+    if(49-c1-c2-c3===v*4) opts.push([c1,c2,c3]);
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+function sleep(ms){return new Promise(function(r){ if(window.__skip) return r(); setTimeout(r,ms); });}
+
+async function animateYarrow(reading){
+  window.__skip=false;
+  $("#out").innerHTML=
+    '<div class="stage" id="stage">'
+    +'<div class="stagehead"><span class="cap" id="ycap">Yarrow stalks — gathering fifty, one set aside</span>'
+    +'<span class="skip" id="yskip">skip →</span></div>'
+    +'<div class="mat" id="ymat"></div>'
+    +'<div class="counts" id="ycounts">&nbsp;</div>'
+    +'<div class="buildhex" id="ybuild"></div></div>';
+  $("#out").scrollIntoView({behavior:"smooth",block:"start"});
+  const mat=$("#ymat"), cap=$("#ycap"), counts=$("#ycounts"), build=$("#ybuild");
+  $("#stage").addEventListener("click",function(){window.__skip=true;});
+  $("#yskip").addEventListener("click",function(e){e.stopPropagation();window.__skip=true;});
+
+  // placeholder hexagram, top (line 6) to bottom (line 1)
+  const slots={};
+  for(let p=6;p>=1;p--){const d=document.createElement("div");d.className="brow ph";build.appendChild(d);slots[p]=d;}
+
+  function newStalks(n){
+    mat.innerHTML=""; const arr=[];
+    for(let i=0;i<n;i++){const s=document.createElement("i");s.className="stalk in";mat.appendChild(s);arr.push(s);}
+    requestAnimationFrame(function(){arr.forEach(function(s){s.classList.remove("in");});});
+    return arr;
+  }
+  async function setAside(arr,count){
+    const victims=arr.slice(arr.length-count);
+    victims.forEach(function(s){s.classList.add("gone");});
+    await sleep(520);
+    victims.forEach(function(s){s.remove();});
+    arr.length=arr.length-count;
+  }
+  function fillSlot(el,value,moving){
+    const yang=(value===7||value===9);
+    el.className="brow"+(moving?" move":"");
+    el.innerHTML = yang ? '<span class="bar"></span>'
+      : '<span class="yin"><span class="bar"></span><span class="bar"></span></span>';
+  }
+
+  for(let li=0; li<6; li++){
+    cap.textContent="Line "+(li+1)+" of 6 — gathering 49 stalks";
+    let S=newStalks(49); let remaining=49; counts.innerHTML="49 stalks in hand";
+    await sleep(520);
+    const dec=stalkDecompose(reading.values[li]);
+    for(let ci=0; ci<3; ci++){
+      cap.textContent="Line "+(li+1)+" · change "+(ci+1)+" of 3 — divide the heap, set aside the remainder";
+      const pivot=Math.max(1,Math.min(S.length-2,Math.floor(S.length/2)+(Math.floor(Math.random()*7)-3)));
+      if(S[pivot]) S[pivot].classList.add("pivot");
+      await sleep(440);
+      await setAside(S,dec[ci]);
+      remaining-=dec[ci];
+      mat.querySelectorAll(".pivot").forEach(function(s){s.classList.remove("pivot");});
+      counts.innerHTML="set aside <b>"+dec[ci]+"</b> · <b>"+remaining+"</b> remain";
+      await sleep(320);
+    }
+    S.forEach(function(s){s.classList.add("glow");});
+    const v=reading.values[li], t=LINE_TYPE[v];
+    counts.innerHTML=remaining+" ÷ 4 = <b>"+(remaining/4)+"</b> → "+v+" "+t[0]+" "+t[1]+(reading.moving.includes(li+1)?" (moving)":"");
+    await sleep(680);
+    fillSlot(slots[li+1],v,reading.moving.includes(li+1));
+    S.forEach(function(s){s.classList.add("gone");});
+    await sleep(300); mat.innerHTML="";
+  }
+  cap.textContent="The hexagram is complete";
+  await sleep(400);
+  show(renderYijing(reading));
+}
+
+// remember the animation preference
+(function(){
+  const box=$("#anim"); if(!box) return;
+  const saved=localStorage.getItem("oracle.anim");
+  if(saved!==null) box.checked=(saved==="1");
+  box.addEventListener("change",function(){localStorage.setItem("oracle.anim",box.checked?"1":"0");});
+})();
 
 // ---- the odds panel ----
 function buildOdds(){
