@@ -16,9 +16,22 @@ Or double-click **`Taoist Oracle.command`** on the Desktop.
 
 A numbered menu offers:
 
-1. **I Ching 易經 — three coins** — quick cast, uniform odds.
-2. **I Ching 易經 — yarrow stalks** — the authentic 49-stalk procedure, with the
-   historical bias toward stable lines.
+1. **I Ching 易經 — three coins** — quick cast, symmetric odds.
+2. **I Ching 易經 — yarrow stalks** — draws each line from the traditional
+   yarrow distribution, with the historical bias toward stable lines.
+
+   **The odds shift** (menu item 6, or the "About the odds" panel in the web
+   version): both methods give the same 50/50 yin–yang balance and the same 25%
+   chance a line is moving. The coin method only changes the *internal lean* —
+   yarrow favors stable young-yin and, among moving lines, old-yang over old-yin
+   3:1; coins flatten that to perfect symmetry.
+
+   | line | yarrow | three coins |
+   |---|---|---|
+   | 9 老陽 old yang (moving) | 18.75% | 12.5% |
+   | 8 少陰 young yin | 43.75% | 37.5% |
+   | 7 少陽 young yang | 31.25% | 37.5% |
+   | 6 老陰 old yin (moving) | 6.25% | 12.5% |
 3. **Plum Blossom 梅花易數 — from two numbers** — you give two numbers; the
    engine builds the hexagram and the 體/用 (host/use) element reading.
 4. **Plum Blossom 梅花易數 — from this moment** — the classic time method, using

@@ -164,12 +164,34 @@ def act_liuyao():
     show_liuyao(reading, now.strftime("%Y-%m-%d %H:%M"))
 
 
+def show_odds():
+    print(LINE)
+    print("THE ODDS — three coins vs. yarrow stalks\n")
+    print(f"   {'line':<20}{'yarrow':>10}{'coins':>10}")
+    print(f"   {'-'*40}")
+    for value, zh, en, yar, coin in yijing.odds_table():
+        label = f"{value} {zh} {en}"
+        print(f"   {label:<20}{yar:>9.2f}%{coin:>9.2f}%")
+    print(f"   {'-'*40}")
+    print("\n   What stays the same under BOTH methods:")
+    print("     • each line is 50% yin, 50% yang")
+    print("     • any line is moving (changing) exactly 25% of the time")
+    print("\n   What the coin method changes — only the internal lean:")
+    print("     • Yarrow leans toward stable young-yin (少陰, its commonest")
+    print("       line) and, among moving lines, toward old-yang over old-yin")
+    print("       by 3 to 1 — a built-in tilt toward yang giving way to yin.")
+    print("     • Coins flatten that to perfect symmetry: old yin and old yang")
+    print("       become equally likely. Same amount of change, no direction.")
+    print(LINE)
+
+
 MENU = [
     ("I Ching — cast with three coins", lambda: act_yijing("coin")),
     ("I Ching — cast with yarrow stalks", lambda: act_yijing("yarrow")),
     ("Plum Blossom — from two numbers", act_meihua_numbers),
     ("Plum Blossom — from this moment", act_meihua_time),
     ("Wen Wang Gua (Liu Yao) — cast for now", act_liuyao),
+    ("The odds — coins vs. yarrow (statistics)", show_odds),
 ]
 
 
