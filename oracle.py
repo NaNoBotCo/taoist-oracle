@@ -6,6 +6,8 @@ Numbered-menu console. Everything runs offline, pure standard library.
     python3 oracle.py
 """
 
+import json
+import os
 import random
 import sys
 from datetime import datetime
@@ -14,6 +16,38 @@ from core import bagua, wuxing, ganzhi
 from methods import yijing, meihua, liuyao
 
 LINE = "─" * 60
+
+# Canonical 卦辭/爻辭 (Zhou Yi, public domain) + concise English translation.
+_ZHOUYI_PATH = os.path.join(os.path.dirname(__file__), "data", "zhouyi.json")
+with open(_ZHOUYI_PATH, encoding="utf-8") as _f:
+    ZHOUYI = {int(k): v for k, v in json.load(_f).items()}
+
+_PROTOCOL = [
+    "No moving lines — read the Judgment (卦辭); the figure stands as it is.",
+    "One moving line — read that line's 爻辭; it carries the answer.",
+    "Two moving lines — read both 爻辭; the upper of the two weighs more.",
+    "Three moving lines — read the Judgments of both present and changed hexagram;"
+    " the present is the trunk, the changed the tendency.",
+    "Four moving lines — read the two still lines of the changed hexagram; the lower governs.",
+    "Five moving lines — read the single still line of the changed hexagram.",
+    "Six moving lines — read the Judgment of the changed hexagram (乾/坤: their 用九/用六).",
+]
+
+
+def show_canonical(hexagram, moving):
+    """Print the Judgment and, for any moving lines, their 爻辭."""
+    z = ZHOUYI.get(hexagram.number)
+    if not z:
+        return
+    print(f"\n   卦辭 Judgment: {z['judg']['zh']}")
+    print(f"      {z['judg']['en']}")
+    print(f"\n   {_PROTOCOL[len(moving)]}")
+    if moving:
+        print("\n   Moving lines (read these first):")
+        for pos in moving:
+            ln = z["lines"][pos - 1]
+            print(f"     Line {pos}: {ln['zh']}")
+            print(f"        {ln['en']}")
 
 
 # --------------------------------------------------------------------------
@@ -60,6 +94,7 @@ def show_yijing(reading):
         print("   lines for the pivot, and the changed hexagram for where it tends.")
     else:
         print("\n   No moving lines — a still answer. Read the hexagram as it stands.")
+    show_canonical(reading["primary"], reading["moving"])
     print(LINE)
 
 
@@ -80,6 +115,7 @@ def show_meihua(reading):
     print(f"\n   體 Host (self):     {use_el_name(host['element'])}  [{host['pos']} trigram]")
     print(f"   用 Use (situation): {use_el_name(use['element'])}  [{use['pos']} trigram]")
     print(f"\n   {reading['verdict']}")
+    show_canonical(reading["primary"], reading["moving"])
     print(LINE)
 
 

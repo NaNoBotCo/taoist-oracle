@@ -72,14 +72,33 @@ rules (month 11 contains the December solstice; a leap month is the first month
 of a 13-month solar year with no major solar term). Validated against real
 Chinese New Years 2020–2033 and the 2023 leap-2nd-month.
 
-## What is complete vs. seeded
+## Interpretation — grounded in the canonical texts
 
-- **Mechanics: complete.** Every hexagram, changing line, transform, najia
-  assignment, palace, six-relative, void, and the calendar are correct and
-  tested.
-- **Interpretation text: seeded.** Each hexagram has one concise gloss. The full
-  384 line-texts are a data layer (`data/hexagrams.py` → `LINE_TEXTS`) left
-  empty on purpose, ready to fill without touching the engine.
+The I Ching reading is not invented. It draws on the received tradition:
+
+- **`data/zhouyi.json`** holds the verbatim canonical **卦辭 (Judgment)** and all
+  **384 爻辭 (line statements)** of the Zhou Yi, plus 用九/用六 for 乾 and 坤 —
+  sourced from ctext.org (public domain) — each paired with a concise **English
+  translation of my own**, clearly marked as such (not Legge, not Wilhelm).
+- Every reading shows the Judgment and **all six lines** with their 爻辭, the
+  **moving lines highlighted** (they carry the answer), plus the classical
+  **reading protocol** (which lines to read, by how many are moving) and the
+  **位/中/正/應 line-position doctrine**, labeled as traditional line theory.
+- `build_web.py` injects the corpus into `oracle.html`; the Python CLI loads the
+  same JSON. One source of truth for both surfaces.
+
+## The web version also has
+
+- a **question/intention field** — held with each reading and the journal;
+- a **journal** of past readings (stored in your browser only);
+- a **"Which method, when?"** guidance panel;
+- the subtle **yarrow ritual animation** and the **odds** explainer.
+
+## What is complete
+
+Every hexagram, changing line, transform, najia assignment, palace,
+six-relative, void, the calendar, and the full canonical text are correct and
+tested.
 
 ## Extending
 
