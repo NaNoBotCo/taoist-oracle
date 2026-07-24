@@ -123,6 +123,40 @@
   .brow.move .bar{background:var(--accent)}
   @media (prefers-color-scheme:dark){.stalk{background:linear-gradient(180deg,#d8b45c,#7d611f)}}
   @media (prefers-reduced-motion:reduce){.stalk{transition:none}}
+  /* --- intention field --- */
+  .intent-wrap{margin-bottom:1.2rem}
+  .intent-wrap input{width:100%; font:inherit; font-size:1.2rem; padding:.75rem 1rem;
+    border:2px solid var(--line); border-radius:12px; background:var(--panel); color:var(--ink)}
+  .intent-wrap input:focus{outline:none; border-color:var(--accent)}
+  .qline{font-size:1.25rem; font-style:italic; margin:0 0 1rem; padding-left:.9rem;
+    border-left:4px solid var(--accent)}
+  /* --- interpretation blocks --- */
+  .judg{margin:1.1rem 0; padding:1rem 1.1rem; border-radius:12px; border:1px solid var(--line);
+    background:color-mix(in srgb, var(--accent2) 7%, transparent)}
+  .judg .zh{font-size:1.4rem; line-height:1.4}
+  .judg .en{font-size:1.1rem; margin-top:.35rem}
+  .judg .src{font-size:.85rem; color:var(--muted); margin-top:.4rem}
+  .protocol{margin:1rem 0; padding:.85rem 1rem; border-radius:12px; font-size:1.1rem;
+    border-left:5px solid var(--accent); background:color-mix(in srgb, var(--accent) 9%, transparent)}
+  h3.sec{font-size:1.2rem; margin:1.4rem 0 .6rem; color:var(--muted); letter-spacing:.03em}
+  .lines2{display:flex; flex-direction:column; gap:.55rem}
+  .lrow{display:flex; gap:.85rem; align-items:flex-start; padding:.7rem .8rem; border-radius:10px;
+    border:1px solid transparent}
+  .lrow.moving{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent)}
+  .lrow .lg{flex:0 0 auto; padding-top:.35rem}
+  .lrow .lg .miniyang,.lrow .lg .miniyin{width:2.4rem}
+  .lrow .lt{flex:1}
+  .lrow .lhead{font-size:1.05rem; font-weight:600}
+  .lrow.moving .lhead{color:var(--accent)}
+  .lrow .lzh{font-size:1.2rem; margin-top:.2rem}
+  .lrow .len{font-size:1.05rem; margin-top:.15rem}
+  .lrow .ldoc{font-size:.92rem; color:var(--muted); margin-top:.3rem}
+  .transl-note{font-size:.85rem; color:var(--muted); margin-top:1rem; font-style:italic}
+  .jlist{display:flex; flex-direction:column; gap:.7rem}
+  .jrow{padding:.6rem .8rem; border:1px solid var(--line); border-radius:10px}
+  .jw{font-size:.9rem; color:var(--muted)}
+  .jq{font-style:italic; margin:.15rem 0}
+  .jh{font-size:1.05rem}
   .tests{font-size:.8rem;color:var(--muted);margin-top:2rem}
 </style>
 </head>
@@ -131,9 +165,19 @@
   <h1>☯ Taoist Oracle</h1>
   <p class="sub">Cast-oracle methods on one engine — I Ching, Plum Blossom, Wen Wang Gua.</p>
 
+  <div class="intent-wrap">
+    <input id="intent" type="text" autocomplete="off"
+      placeholder="Hold a question or intention (optional)…">
+  </div>
+
   <div class="methods" id="menu"></div>
 
   <label class="animtoggle"><input type="checkbox" id="anim" checked> Animate the yarrow ritual (the 49-stalk casting)</label>
+
+  <details class="odds" id="guide">
+    <summary>ⓘ Which method, when? — how to choose</summary>
+    <div id="guidebody"></div>
+  </details>
 
   <details class="odds" id="odds">
     <summary>ⓘ About the odds — three coins vs. yarrow stalks</summary>
@@ -142,6 +186,11 @@
 
   <div id="controls"></div>
   <div id="out"></div>
+
+  <details class="odds" id="journal">
+    <summary>📓 Journal — past readings <span id="jcount"></span></summary>
+    <div id="journalbody"></div>
+  </details>
 
   <div class="tests" id="tests"></div>
 </div>
@@ -504,30 +553,159 @@ function hexBlock(hex,values,cap){
     + '<div class="gloss">'+hex.gloss+'</div></div>';
 }
 
-function renderYijing(r){
-  const label=r.method==="yarrow"?"yarrow stalks":"three coins";
-  let html='<div class="card"><h2>易經 Yijing</h2><div class="meta">cast by '+label+'</div>'
-    +'<div class="pair">'+hexBlock(r.primary,r.values,"Present");
-  if(r.moving.length){
-    html+=hexBlock(r.changed,null,"Changes into");
-    html+='</div><div class="facts"><b>Moving lines:</b> '+r.moving.join(", ")+' (from the bottom)</div>'
-      +'<div class="hint">Read the present hexagram for now, the moving lines for the pivot, the changed hexagram for where it tends.</div>';
-  } else {
-    html+='</div><div class="hint">No moving lines — a still answer. Read the hexagram as it stands.</div>';
+// ============ interpretation — grounded in the received texts =============
+// ZHOUYI[num] = {judg:{zh,en}, lines:[{zh,en} x6], extra:{zh,en}|null}
+// Populated from the canonical 卦辭/爻辭 (Zhou Yi, ctext.org, public domain);
+// English is my own concise translation of the canonical line.
+const ZHOUYI = (typeof ZHOUYI_DATA !== "undefined") ? ZHOUYI_DATA : {};
+
+const POS_PLACE=[
+  "the beginning — the feet, what is only starting and still hidden",
+  "the inner center — the field, the trusted servant; a balanced place",
+  "the threshold — top of the lower trigram, exposed and transitional",
+  "the approach to power — the minister beside the ruler; caution and service",
+  "the seat of power — the ruler's place, central and honored",
+  "beyond the summit — the sage past power, or the excess of going too far"
+];
+const MOVE_NOTE={
+  yang:"Old yang (9): strength at its peak, beginning to yield to yin — culmination, and the first turn downward.",
+  yin:"Old yin (6): yielding carried to its end, beginning to firm into yang — a turn toward action."
+};
+function lineDoctrine(pos,yang,bits){
+  const correct=(yang&&pos%2===1)||(!yang&&pos%2===0);
+  const central=(pos===2||pos===5);
+  const partner=pos<=3?pos+3:pos-3;
+  const responds=bits[pos-1]!==bits[partner-1];
+  let s="位 "+POS_PLACE[pos-1]+". ";
+  if(central) s+="中 central, a place of balance. ";
+  s+= correct ? "正 a "+(yang?"firm":"yielding")+" line in its proper place. "
+              : "不當 a "+(yang?"firm":"yielding")+" line out of place — some tension. ";
+  s+= responds ? "應 holds correspondence with line "+partner+"."
+               : "no correspondence with line "+partner+".";
+  return s;
+}
+function readingProtocol(n){
+  return [
+    "No moving lines — read the Judgment (卦辭); the figure stands as it is.",
+    "One moving line — read that line's 爻辭; it carries the answer.",
+    "Two moving lines — read both 爻辭; the upper of the two weighs more.",
+    "Three moving lines — read the Judgments of both present and changed hexagram; the present is the trunk, the changed the tendency.",
+    "Four moving lines — read the two still lines of the changed hexagram; the lower of them governs.",
+    "Five moving lines — read the single still line of the changed hexagram.",
+    "Six moving lines — read the Judgment of the changed hexagram (for 乾/坤, their 用九/用六 text)."
+  ][n];
+}
+function esc(s){return (s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function qBlock(q){return q?'<div class="qline">“'+esc(q)+'”</div>':"";}
+function judgmentBlock(hex){
+  const z=ZHOUYI[hex.number];
+  if(!z||!z.judg) return '<div class="judg"><div class="en">'+hex.gloss+'</div>'
+    +'<div class="src">reading gloss (canonical text not yet loaded)</div></div>';
+  return '<div class="judg"><div class="zh">'+z.judg.zh+'</div>'
+    +'<div class="en">'+z.judg.en+'</div>'
+    +'<div class="src">卦辭 the Judgment · my translation of the canonical text</div></div>';
+}
+function lineItems(reading){
+  const items=[], bits=reading.primary.bits;
+  for(let p=1;p<=6;p++){
+    let yang,moving;
+    if(reading.values){const v=reading.values[p-1]; yang=(v===7||v===9); moving=(v===6||v===9);}
+    else {yang=bits[p-1]===1; moving=reading.moving.indexOf(p)>=0;}
+    items.push({pos:p,yang:yang,moving:moving});
   }
+  return items;
+}
+function linesBlock(reading){
+  const z=ZHOUYI[reading.primary.number], bits=reading.primary.bits, items=lineItems(reading);
+  let rows="";
+  for(let i=items.length-1;i>=0;i--){                 // top (6) to bottom (1)
+    const it=items[i], p=it.pos;
+    const type=it.moving?(it.yang?["老陽","old yang"]:["老陰","old yin"])
+                        :(it.yang?["少陽","young yang"]:["少陰","young yin"]);
+    const glyph='<span class="'+(it.yang?'miniyang':'miniyin')+(it.moving?' m':'')+'"></span>';
+    const lz=z&&z.lines&&z.lines[p-1];
+    const canon=lz?'<div class="lzh">'+lz.zh+'</div><div class="len">'+lz.en+'</div>':"";
+    rows+='<div class="lrow'+(it.moving?' moving':'')+'"><div class="lg">'+glyph+'</div><div class="lt">'
+      +'<div class="lhead">Line '+p+' · '+type[0]+' '+type[1]+(it.moving?' — moving':'')+'</div>'
+      +canon
+      +'<div class="ldoc">'+lineDoctrine(p,it.yang,bits)+(it.moving?' — '+MOVE_NOTE[it.yang?'yang':'yin']:'')+'</div>'
+      +'</div></div>';
+  }
+  return '<div class="lines2">'+rows+'</div>';
+}
+const TRANSL_NOTE='<div class="transl-note">Chinese is the canonical 卦辭/爻辭 (Zhou Yi, public domain). '
+  +'English is my own concise translation of that text; the 位/中/正/應 notes are traditional line-position theory.</div>';
+
+// ---- journal (localStorage) ----
+function loadLog(){try{return JSON.parse(localStorage.getItem("oracle.log")||"[]");}catch(e){return [];}}
+function logReading(method,q,r,extra){
+  const e={t:new Date().toISOString(),method:method,q:q||"",
+    primary:r.primary?r.primary.number:null,pname:r.primary?(r.primary.hanzi+" "+r.primary.english):"",
+    moving:r.moving?r.moving.slice():[],changed:r.changed?r.changed.number:null,
+    cname:r.changed?(r.changed.hanzi+" "+r.changed.english):"",extra:extra||""};
+  const log=loadLog(); log.unshift(e);
+  localStorage.setItem("oracle.log",JSON.stringify(log.slice(0,200)));
+  renderJournal();
+}
+function renderJournal(){
+  const log=loadLog(), c=$("#jcount"), body=$("#journalbody");
+  if(c) c.textContent=log.length?("("+log.length+")"):"";
+  if(!body) return;
+  if(!log.length){body.innerHTML='<p style="color:var(--muted)">No readings yet. Your casts are recorded here — stored only in this browser.</p>';return;}
+  let h='<div style="margin:.3rem 0 1rem"><button class="go" id="jclear">Clear journal</button></div><div class="jlist">';
+  for(const e of log){
+    const when=new Date(e.t).toLocaleString();
+    const mv=e.moving&&e.moving.length?(' · moving '+e.moving.join(",")):'';
+    const ch=e.changed?(' → #'+e.changed+' '+esc(e.cname)):'';
+    h+='<div class="jrow"><div class="jw">'+when+' · '+esc(e.method)+'</div>'
+      +(e.q?'<div class="jq">“'+esc(e.q)+'”</div>':'')
+      +'<div class="jh">#'+e.primary+' '+esc(e.pname)+ch+mv+(e.extra?(' · '+esc(e.extra)):'')+'</div></div>';
+  }
+  h+='</div>';
+  body.innerHTML=h;
+  const cb=$("#jclear"); if(cb) cb.onclick=function(){ if(confirm("Clear the whole journal? This cannot be undone.")){localStorage.removeItem("oracle.log");renderJournal();} };
+}
+function buildGuide(){
+  const b=$("#guidebody"); if(!b) return;
+  b.innerHTML=
+   '<p><b>易經 I Ching (coins or yarrow)</b> — for a situation you are inside and want to understand as it moves. The moving lines are the point: they mark the pivots. Ask “what is really going on, and where is it heading?” Coins for speed; yarrow for the meditative rite and its traditional weighting.</p>'
+   +'<p><b>梅花 Plum Blossom</b> — for reading a moment or an omen rather than posing a question. A number, a time, a thing you noticed becomes the oracle; the 體/用 elements give a clean favorable / adverse read. Reach for it when you do not want to cast — you want to read what is already in front of you.</p>'
+   +'<p><b>文王卦 Wen Wang Gua</b> — for concrete, worldly questions: will it happen, when, who is involved. The six relatives map the question onto people, money, authority and outcome; the void and day pillar give timing. The most predictive of the three.</p>'
+   +'<p style="color:var(--muted)">Rule of thumb — <b>understand →</b> I Ching · <b>read the moment →</b> Plum Blossom · <b>predict an outcome →</b> Wen Wang Gua.</p>';
+}
+function getQ(){const el=$("#intent"); return el?el.value.trim():"";}
+
+function renderYijing(r,q){
+  const label=r.method==="yarrow"?"yarrow stalks":"three coins";
+  let html='<div class="card"><h2>易經 Yijing</h2>'+qBlock(q)+'<div class="meta">cast by '+label+'</div>'
+    +'<div class="pair">'+hexBlock(r.primary,r.values,"Present");
+  if(r.moving.length) html+=hexBlock(r.changed,null,"Changes into");
+  html+='</div>';
+  html+='<div class="protocol">'+readingProtocol(r.moving.length)+'</div>';
+  html+=judgmentBlock(r.primary);
+  html+='<h3 class="sec">The six lines'+(r.moving.length?' — moving lines highlighted':'')+'</h3>';
+  html+=linesBlock(r);
+  if(r.moving.length){
+    html+='<h3 class="sec">Changes into · #'+r.changed.number+' '+r.changed.hanzi+' '+r.changed.english+'</h3>';
+    html+=judgmentBlock(r.changed);
+  }
+  html+=TRANSL_NOTE;
   return html+"</div>";
 }
-function renderMeihua(r){
+function renderMeihua(r,q){
   let head="";
   if(r.lunar){const L=r.lunar,leap=L.is_leap?"leap ":"";
     head='<div class="meta">this moment → lunar '+L.year+', '+leap+'month '+L.month+', day '+L.day
       +' &nbsp;·&nbsp; '+r.inputs.yb+'+'+r.inputs.month+'+'+r.inputs.day+' (+'+r.inputs.hb+')</div>';}
-  return '<div class="card"><h2>梅花易數 Plum Blossom</h2>'+head
+  let html='<div class="card"><h2>梅花易數 Plum Blossom</h2>'+qBlock(q)+head
     +'<div class="pair">'+hexBlock(r.primary,null,"Hexagram")+hexBlock(r.changed,null,"Changes into")+'</div>'
     +'<div class="facts"><b>Moving line:</b> '+r.moving[0]+'</div>'
     +'<div class="facts" style="margin-top:.4rem"><b>體 Host (self):</b> '+elName(r.host.element)
       +' · <b>用 Use:</b> '+elName(r.use.element)+'</div>'
-    +'<div class="verdict '+(r.tone==='good'?'good':r.tone==='bad'?'bad':'')+'">'+r.verdict+'</div></div>';
+    +'<div class="verdict '+(r.tone==='good'?'good':r.tone==='bad'?'bad':'')+'">'+r.verdict+'</div>';
+  html+=judgmentBlock(r.primary);
+  html+='<h3 class="sec">The six lines — moving line highlighted</h3>'+linesBlock(r)+TRANSL_NOTE;
+  return html+'</div>';
 }
 function sheet(hex,values,ov,title,movingSet,showMarks){
   let rows="";
@@ -544,9 +722,9 @@ function sheet(hex,values,ov,title,movingSet,showMarks){
   return '<div class="hexbox"><div class="cap">'+title+': #'+hex.number+' '+hex.hanzi+' '+hex.english+'</div>'
     +'<table class="sheet">'+rows+'</table></div>';
 }
-function renderLiuyao(r,when){
+function renderLiuyao(r,when,q){
   const ov=r.overlay;
-  let html='<div class="card"><h2>文王卦 Wen Wang Gua / 六爻 Liu Yao</h2>'
+  let html='<div class="card"><h2>文王卦 Wen Wang Gua / 六爻 Liu Yao</h2>'+qBlock(q)
     +'<div class="meta">'+when+'</div><div class="pair">'
     +sheet(r.primary,r.values,ov,"Present",null,true);
   if(r.changed) html+=sheet(r.changed,null,r.overlayChanged,"Changed",new Set(r.moving),false);
@@ -560,16 +738,16 @@ function renderLiuyao(r,when){
 
 // menu wiring
 const METHODS=[
-  ["易經","I Ching — three coins","quick cast, even odds",function(){show(renderYijing(castYijing("coin")));}],
+  ["易經","I Ching — three coins","quick cast, even odds",function(){const q=getQ();const r=castYijing("coin");show(renderYijing(r,q));logReading("I Ching · coins",q,r);}],
   ["易經","I Ching — yarrow stalks","the 49-stalk rite, watch it unfold",function(){
-    const reading=castYijing("yarrow");
+    const q=getQ();const r=castYijing("yarrow");
     const on=$("#anim")&&$("#anim").checked;
     const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if(on&&!reduce) animateYarrow(reading); else show(renderYijing(reading));
+    if(on&&!reduce) animateYarrow(r,q); else {show(renderYijing(r,q));logReading("I Ching · yarrow",q,r);}
   }],
   ["梅花","Plum Blossom — two numbers","you give two numbers",function(){numberForm();}],
-  ["梅花","Plum Blossom — this moment","from the current lunar date",function(){const n=new Date();show(renderMeihua(meihuaFromTime(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours())));}],
-  ["文王","Wen Wang Gua (Liu Yao)","full six-line overlay for now",function(){const n=new Date();show(renderLiuyao(castLiuyao(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours()),n.toLocaleString()));}],
+  ["梅花","Plum Blossom — this moment","from the current lunar date",function(){const q=getQ();const n=new Date();const r=meihuaFromTime(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours());show(renderMeihua(r,q));logReading("Plum Blossom · moment",q,r);}],
+  ["文王","Wen Wang Gua (Liu Yao)","full six-line overlay for now",function(){const q=getQ();const n=new Date();const r=castLiuyao(n.getFullYear(),n.getMonth()+1,n.getDate(),n.getHours());show(renderLiuyao(r,n.toLocaleString(),q));logReading("Wen Wang Gua",q,r,"day "+r.overlay.dayPillar.zh());}],
 ];
 function buildMenu(){
   $("#menu").innerHTML=METHODS.map(function(m,i){
@@ -581,7 +759,7 @@ function numberForm(){
     +'<label>Number 1 <input id="n1" type="number" value="7"></label>'
     +'<label>Number 2 <input id="n2" type="number" value="8"></label>'
     +'<button class="go" id="ngo">Cast</button></div>';
-  $("#ngo").onclick=function(){show(renderMeihua(meihuaFromNumbers(+$("#n1").value||1,+$("#n2").value||1)));};
+  $("#ngo").onclick=function(){const q=getQ();const r=meihuaFromNumbers(+$("#n1").value||1,+$("#n2").value||1);show(renderMeihua(r,q));logReading("Plum Blossom · numbers",q,r);};
 }
 function show(html){$("#out").innerHTML=html; $("#out").scrollIntoView({behavior:"smooth",block:"start"});}
 buildMenu();
@@ -600,7 +778,7 @@ function stalkDecompose(v){
 }
 function sleep(ms){return new Promise(function(r){ if(window.__skip) return r(); setTimeout(r,ms); });}
 
-async function animateYarrow(reading){
+async function animateYarrow(reading,q){
   window.__skip=false;
   $("#out").innerHTML=
     '<div class="stage" id="stage">'
@@ -664,7 +842,8 @@ async function animateYarrow(reading){
   }
   cap.textContent="The hexagram is complete";
   await sleep(400);
-  show(renderYijing(reading));
+  show(renderYijing(reading,q));
+  logReading("I Ching · yarrow",q,reading);
 }
 
 // remember the animation preference
@@ -695,6 +874,8 @@ function buildOdds(){
   $("#oddsbody").innerHTML=body;
 }
 buildOdds();
+buildGuide();
+renderJournal();
 
 /* ---- in-page self-tests: proves the JS engine matches the Python ---- */
 (function(){
