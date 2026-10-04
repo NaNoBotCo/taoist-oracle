@@ -15,7 +15,8 @@ html = (ROOT / "oracle.html").read_text(encoding="utf-8")
 
 block = ("/*ZHOUYI_DATA_START*/\nconst ZHOUYI_DATA = "
          + json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-         + ";\n/*ZHOUYI_DATA_END*/")
+         + ";  // stylecheck: allow — the Zhou Yi's own words and their translation"
+         + "\n/*ZHOUYI_DATA_END*/")
 
 marker = re.compile(r"/\*ZHOUYI_DATA_START\*/.*?/\*ZHOUYI_DATA_END\*/", re.S)
 if marker.search(html):
