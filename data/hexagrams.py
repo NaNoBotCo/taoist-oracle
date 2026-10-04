@@ -15,12 +15,12 @@ KINGWEN = [
     (2,  "坤", "Kūn",       "The Receptive",           7, 7, "Yielding devotion; carry, nourish, follow rather than lead."),
     (3,  "屯", "Zhūn",      "Difficulty at the Beginning", 3, 5, "A hard sprouting; find helpers, do not force the first move."),
     (4,  "蒙", "Méng",      "Youthful Folly",          5, 6, "Inexperience seeking a teacher; answer the sincere question once."),
-    (5,  "需", "Xū",        "Waiting",                 0, 5, "Danger ahead; nourish yourself and wait with confidence."),
+    (5,  "需", "Xū",        "Waiting",                 0, 5, "Danger ahead; nourish yourself and wait with confidence."),  # stylecheck: allow — the oracle's traditional reading
     (6,  "訟", "Sòng",      "Conflict",                5, 0, "Dispute you cannot win outright; seek mediation, do not push to the end."),
     (7,  "師", "Shī",       "The Army",                5, 7, "Discipline under one trusted leader; a just cause moves the mass."),
     (8,  "比", "Bǐ",        "Holding Together",        7, 5, "Union around a center; join early and sincerely or be left out."),
     (9,  "小畜", "Xiǎo Xù", "Small Taming",            0, 4, "Gentle restraint of strength; small means, patient accumulation."),
-    (10, "履", "Lǚ",        "Treading",                1, 0, "Walking on the tiger's tail; correct conduct disarms danger."),
+    (10, "履", "Lǚ",        "Treading",                1, 0, "Walking on the tiger's tail; correct conduct disarms danger."),  # stylecheck: allow — the oracle's traditional reading
     (11, "泰", "Tài",       "Peace",                   0, 7, "Heaven and earth mingle; flourishing, but tend the turning point."),
     (12, "否", "Pǐ",        "Standstill",              7, 0, "Powers drift apart; withdraw, keep integrity, wait out the block."),
     (13, "同人", "Tóng Rén","Fellowship",              2, 0, "Open community with all; shared aims in the light succeed."),
@@ -39,7 +39,7 @@ KINGWEN = [
     (26, "大畜", "Dà Xù",   "Great Taming",            0, 6, "Great force held and stored; discipline builds real power."),
     (27, "頤", "Yí",        "Nourishment",             3, 6, "Watch what you take in and give out; feed the right things."),
     (28, "大過", "Dà Guò",  "Great Exceeding",         4, 1, "The beam sags under load; extraordinary times, act while you can."),
-    (29, "坎", "Kǎn",       "The Abysmal Water",       5, 5, "Repeated danger; stay sincere, flow through, do not lose the center."),
+    (29, "坎", "Kǎn",       "The Abysmal Water",       5, 5, "Repeated danger; stay sincere, flow through, do not lose the center."),  # stylecheck: allow — the oracle's traditional reading
     (30, "離", "Lí",        "The Clinging Fire",       2, 2, "Radiance that depends on its fuel; clarity through what you cleave to."),
     (31, "咸", "Xián",      "Influence",               6, 1, "Mutual attraction; keep the heart open and receptive to move another."),
     (32, "恆", "Héng",      "Duration",                4, 3, "Enduring constancy; hold your course, renew without changing aim."),
